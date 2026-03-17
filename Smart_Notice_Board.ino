@@ -1,0 +1,75 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+const char* ssid = "Your WI-FI Name";
+const char* password = "Your WI-FI Password";
+
+ESP8266WebServer server(80);
+
+String message = "SMART NOTICE";
+
+void handleRoot() {
+
+  String page = "<html><body>";
+  page += "<h2>Smart Notice Board</h2>";
+  page += "<form action='/msg'>";
+  page += "Enter Message:<br>";
+  page += "<input type='text' name='text'>";
+  page += "<input type='submit' value='Send'>";
+  page += "</form></body></html>";
+
+  server.send(200,"text/html",page);
+}
+
+void handleMessage() {
+
+  message = server.arg("text");
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0,20);
+  display.println(message);
+  display.display();
+
+  server.send(200,"text/html","Message Sent to OLED");
+}
+
+void setup() {
+
+  Serial.begin(115200);
+
+  WiFi.begin(ssid,password);
+
+  while(WiFi.status()!=WL_CONNECTED){
+    delay(500);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  Serial.println("WiFi Connected");
+  Serial.println(WiFi.localIP());
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC,0x3C)){
+    Serial.println("OLED failed");
+    while(true);
+  }
+
+  display.clearDisplay();
+
+  server.on("/",handleRoot);
+  server.on("/msg",handleMessage);
+
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
